@@ -58,6 +58,32 @@ class DataLoader:
         trips.to_csv(save_loc, index=False)
 
         # TODO: Your code here
+        with self.driver.session() as session:
+            for index, row in trips.iterrows():
+                pickup_location_id = int(row['PULocationID'])
+                dropoff_location_id = int(row['DOLocationID'])
+                distance = float(row['trip_distance'])
+                fare = float(row['fare_amount'])
+                pickup_dt = row['tpep_pickup_datetime']
+                dropoff_dt = row['tpep_dropoff_datetime']
+
+                # Create or update pickup location node
+                session.run("MERGE (p:Location {name: $pickup_location_id})", pickup_location_id=pickup_location_id)
+
+                # Create or update dropoff location node
+                session.run("MERGE (d:Location {name: $dropoff_location_id})", dropoff_location_id=dropoff_location_id)
+
+                # Create a TRIP relationship between the pickup and dropoff nodes
+                session.run("""
+                    MATCH (p:Location {name: $pickup_location_id}), (d:Location {name: $dropoff_location_id})
+                    CREATE (p)-[r:TRIP {
+                        distance: $distance,
+                        fare: $fare,
+                        pickup_dt: $pickup_dt,
+                        dropoff_dt: $dropoff_dt
+                    }]->(d)
+                """, pickup_location_id=pickup_location_id, dropoff_location_id=dropoff_location_id,
+                distance=distance, fare=fare, pickup_dt=pickup_dt, dropoff_dt=dropoff_dt)
 
 
 def main():
